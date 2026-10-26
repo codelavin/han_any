@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>han_any · 汉字任意转</title>
+<style>
+  :root{
+    --brand:#73FBFD; --brand-dim:#65dadc; --brand-deep:#0e6b73;
+    --bg:#f5f7f9; --panel:#ffffff; --line:#e3e8ee;
+    --txt:#1d2733; --txt-dim:#67727f;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--txt); min-height:100vh;
+    font-family:"Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;
+  }
+  header{
+    display:flex; align-items:center; gap:14px; padding:16px 24px;
+    background:var(--panel); border-bottom:1px solid var(--line);
+  }
+  /* han / any 手写旋转对称 logo */
+  .logo{
+    width:64px; height:64px; border-radius:16px; flex:0 0 auto;
+    background:#070b14;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer; transition:transform .7s cubic-bezier(.5,0,.2,1);
+    box-shadow:0 2px 10px rgba(7,11,20,.22); user-select:none;
+  }
+  .logo:hover{transform:rotate(180deg)}
+  .logo svg{width:100%; height:100%; display:block}
+  .lg-cell{fill:#ffffff; stroke:#ffffff; stroke-width:.6; stroke-linejoin:miter}
+  .lg-txt{font-family:inherit; font-weight:700; font-size:18px; fill:#26323c; text-anchor:middle; dominant-baseline:central}
+  .lg-dot-o{fill:#F5813C}
+  .lg-dot-c{fill:#0FA3C4}
+  .lg-wave{fill:none; stroke-width:2.4; stroke-linecap:round}
+  .title{font-size:19px; font-weight:700; letter-spacing:.5px}
+  .sub{font-size:12px; color:var(--txt-dim); margin-top:3px}
+  .wrap{max-width:1180px; margin:0 auto; padding:20px 24px 40px}
+
+  .bar{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:16px;
+  }
+  .bar-label{font-size:12px; color:var(--txt-dim); margin-bottom:8px}
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chip{
+    border:1px solid var(--line); background:#fbfcfd; color:var(--txt);
+    border-radius:999px; padding:6px 13px; font-size:13px; cursor:pointer;
+    transition:.15s; font-family:inherit;
+  }
+  .chip:hover{border-color:var(--brand-dim)}
+  .chip.on{background:var(--brand); border-color:var(--brand); color:#0b3d42; font-weight:700}
+  .chip .k{opacity:.55; font-size:11px; margin-left:5px}
+  .grp{font-size:12px; color:var(--txt-dim); margin:10px 0 6px}
+
+  .io{display:grid; grid-template-columns:1fr 56px 1fr; gap:12px; align-items:stretch}
+  @media(max-width:860px){.io{grid-template-columns:1fr}}
+  .pane{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .pane-hd{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 12px; border-bottom:1px solid var(--line); font-size:13px; color:var(--txt-dim);
+  }
+  textarea{
+    border:0; outline:none; resize:vertical; min-height:300px; padding:14px;
+    font-size:15px; line-height:1.75; font-family:inherit; color:var(--txt); background:transparent;
+  }
+  .mid{display:flex; flex-direction:column; gap:8px; justify-content:center}
+  .mid button,.act button{
+    border:1px solid var(--line); background:var(--panel); border-radius:10px;
+    cursor:pointer; font-family:inherit; font-size:13px; color:var(--txt); padding:9px 12px; transition:.15s;
+  }
+  .mid button:hover,.act button:hover{border-color:var(--brand-dim); background:#f0fdfd}
+  .act{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px}
+  .stat{font-size:12px; color:var(--txt-dim); margin-top:12px; display:flex; gap:18px; flex-wrap:wrap}
+  .tag{
+    display:inline-block; padding:2px 9px; border-radius:6px; font-size:12px;
+    background:#eef7f8; color:var(--brand-deep); border:1px solid #cfeaec;
+  }
+  .sel{
+    border:1px solid var(--line); background:#fbfcfd; color:var(--txt);
+    border-radius:999px; padding:6px 12px; font-size:13px; cursor:pointer;
+    font-family:inherit; max-width:100%;
+  }
+  .sel:hover{border-color:var(--brand-dim)}
+  .sel.on{background:var(--brand); border-color:var(--brand); color:#0b3d42; font-weight:700}
+  .chk{display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; color:var(--txt)}
+  .hint{margin-top:8px; font-size:12px; color:var(--txt-dim); line-height:1.7}
+  .hint b{color:var(--brand-deep)}
+  footer{max-width:1180px; margin:0 auto; padding:0 24px 30px; font-size:12px; color:var(--txt-dim)}
+</style>
+</head>
+<body>
+<header>
+  <!-- bingo 初稿版式（字符数组）：["h", ".a.", "N", "y"]
+       文字锚点 = 各自白块中心线；a / N / y 上移 4px 校准视觉中线（h 不动），
+       再按 bingo 终校：a 下移 1px（69）、N 下移 2px（70）
+       a 的两点原位不动（橙点正排右下，青点为橙点绕 a 格中心 180° 旋转到左上）
+       正弦橙条 / h / .a. N / y / 正弦青条（青弦 = 橙弦沿横轴镜像） -->
+  <div class="logo" title="han · any">
+    <svg viewBox="0 0 144 144" aria-label="han any logo">
+      <defs>
+        <path id="lg-wave" d="M26 24 Q30.7 14 35.4 24 T44.8 24 T54.2 24 T63.6 24 T73 24 T82.4 24 T91.8 24 T101.2 24 T110.6 24 T120 24" fill="none"/>
+        <radialGradient id="lg-glow" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stop-color="#73FBFD" stop-opacity=".20"/>
+          <stop offset="52%" stop-color="#73FBFD" stop-opacity=".07"/>
+          <stop offset="100%" stop-color="#73FBFD" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect x="0" y="0" width="144" height="144" rx="20" fill="#070b14"/>
+      <circle cx="72" cy="72" r="88" fill="url(#lg-glow)"/>
+      <!-- 连通白块：用单条闭合路径一次画成（不用多个 rect 拼接），
+           避免相邻 rect 边缘各自抗锯齿产生的发丝缝隙（h⇄a、N⇄y 处最明显） -->
+      <path class="lg-cell" d="M24 12 L120 12 L120 36 L72 36 L72 60 L96 60 L96 108 L120 108 L120 132 L24 132 L24 108 L72 108 L72 84 L48 84 L48 36 L24 36 Z"/>
+      <use href="#lg-wave" class="lg-wave" stroke="#F5813C"/>
+      <use href="#lg-wave" class="lg-wave" stroke="#0FA3C4" transform="matrix(1 0 0 -1 0 144)"/>
+      <text class="lg-txt" x="60" y="48">h</text>
+      <text class="lg-txt" x="60" y="69">a</text>
+      <text class="lg-txt" x="84" y="70">N</text>
+      <text class="lg-txt" x="84" y="92">y</text>
+      <circle class="lg-dot-o" cx="66" cy="77.5" r="1.9"/>
+      <circle class="lg-dot-c" cx="54" cy="66.5" r="1.9"/>
+    </svg>
+  </div>
+  <div>
+    <div class="title">han_any · 汉字任意转</div>
+    <div class="sub">han + any · 橙色与青色曲线 · 简 ⇄ 繁 ⇄ 台 ⇄ 港</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <div class="grp">转换模式</div>
+    <div class="chips" id="c-opencc">
+      <button class="chip on" data-mode="s2t">简体 → 繁体<span class="k">s2t</span></button>
+      <button class="chip" data-mode="t2s">繁体 → 简体<span class="k">t2s</span></button>
+      <select class="sel" id="more" title="其他转换模式">
+        <option value="">其他转换…</option>
+        <optgroup label="OpenCC · 字形 / 地区标准">
+          <option value="s2twp">简体 → 台湾正体（含当地用词）· s2twp</option>
+          <option value="s2tw">简体 → 台湾正体（仅字形）· s2tw</option>
+          <option value="s2hk">简体 → 香港繁体 · s2hk</option>
+          <option value="tw2sp">台湾正体 → 简体（含当地用词）· tw2sp</option>
+          <option value="tw2s">台湾正体 → 简体（仅字形）· tw2s</option>
+          <option value="hk2s">香港繁体 → 简体 · hk2s</option>
+          <option value="t2tw">繁体 → 台湾正体 · t2tw</option>
+          <option value="t2hk">繁体 → 香港繁体 · t2hk</option>
+        </optgroup>
+        <optgroup label="MediaWiki 地区用词（zhconv）">
+          <option value="zh-cn">大陆简体（含大陆用词）· zh-cn</option>
+          <option value="zh-tw">台灣正體（含台灣用詞）· zh-tw</option>
+          <option value="zh-hk">香港繁體（含香港用詞）· zh-hk</option>
+          <option value="zh-sg">马新简体 · zh-sg</option>
+          <option value="zh-hans">简体（仅字形）· zh-hans</option>
+          <option value="zh-hant">繁體（仅字形）· zh-hant</option>
+        </optgroup>
+      </select>
+    </div>
+    <div style="margin-top:12px">
+      <label class="chk"><input type="checkbox" id="auto"> 自动判断方向（简↔繁互转，忽略所选模式方向）</label>
+    </div>
+    <div class="hint">提示：台湾文本想转成「软件 / 内存 / 鼠标」这类大陆用词，选 <b>tw2sp</b>（含当地用词），
+      光用 t2s 只会得到「软体 / 记忆体」；反之简转台要「軟體 / 記憶體」就选 <b>s2twp</b>。</div>
+  </div>
+
+  <div class="io">
+    <div class="pane">
+      <div class="pane-hd"><span>输入</span><span id="in-cnt">0 字</span></div>
+      <textarea id="src" placeholder="在此粘贴中文文本…&#10;例：日月之行，若出其中；星汉灿烂，若出其里。幸甚至哉，歌以咏志。"></textarea>
+    </div>
+    <div class="mid">
+      <button id="swap" title="交换左右">⇄</button>
+      <button id="clear" title="清空">✕</button>
+      <button id="demo" title="填入示例">例</button>
+    </div>
+    <div class="pane">
+      <div class="pane-hd"><span>输出</span><span id="out-cnt">0 字</span></div>
+      <textarea id="dst" readonly placeholder="转换结果…"></textarea>
+    </div>
+  </div>
+
+  <div class="act">
+    <button id="copy">复制结果</button>
+    <button id="dl">下载 .txt</button>
+    <button id="swap2">结果回填输入</button>
+  </div>
+
+  <div class="stat">
+    <span>检测倾向：<span class="tag" id="det">-</span></span>
+    <span>当前模式：<span class="tag" id="mode-tag">s2t</span></span>
+    <span>引擎：opencc-python-reimplemented 0.1.7 + zhconv 1.4.3</span>
+  </div>
+</div>
+
+<footer>han_any v1.0 · 本地离线转换，文本不上传</footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const src = $('#src'), dst = $('#dst');
+let mode = 's2t', timer = null;
+
+if (location.protocol === 'file:') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const tip = document.createElement('div');
+    tip.style.cssText = 'background:#3a1d1d;color:#ffd7d7;border:1px solid #a33;padding:10px 16px;font-size:13px;line-height:1.7';
+    tip.innerHTML = '当前是直接打开的本地文件（file://），转换接口不会工作。<br>请运行目录下的 <b>run.bat</b>，然后访问 <b>http://127.0.0.1:5057/</b>';
+    document.body.prepend(tip);
+  });
+}
+
+const more = $('#more');
+
+document.querySelectorAll('.chip').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    more.classList.remove('on'); more.value = '';
+    mode = b.dataset.mode;
+    $('#mode-tag').textContent = mode;
+    run();
+  };
+});
+
+more.onchange = () => {
+  if (!more.value) return;
+  document.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+  more.classList.add('on');
+  mode = more.value;
+  $('#mode-tag').textContent = mode;
+  run();
+};
+
+const DEMO = '日月之行，若出其中；星汉灿烂，若出其里。幸甚至哉，歌以咏志。';
+
+async function run() {
+  const text = src.value;
+  $('#in-cnt').textContent = text.length + ' 字';
+  if (!text.trim()) { dst.value = ''; $('#out-cnt').textContent = '0 字'; $('#det').textContent = '-'; return; }
+  try {
+    const r = await fetch('/api/convert', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text, mode, auto: $('#auto').checked})
+    }).then(r => r.json());
+    dst.value = r.result;
+    $('#out-cnt').textContent = r.result.length + ' 字';
+    $('#det').textContent = {simplified:'偏简体', traditional:'偏繁体', unknown:'不确定'}[r.detect] || r.detect;
+  } catch (e) {
+    dst.value = '';
+    $('#det').textContent = '-';
+    $('#out-cnt').textContent = '0 字';
+    if (location.protocol === 'file:') {
+      dst.value = '请运行 run.bat 后访问 http://127.0.0.1:5057/（当前为 file:// 直开，接口不可用）';
+    } else {
+      dst.value = '转换失败：' + e + '（请确认服务已启动：run.bat）';
+    }
+  }
+}
+function debounce() { clearTimeout(timer); timer = setTimeout(run, 180); }
+
+src.addEventListener('input', debounce);
+$('#auto').addEventListener('change', run);
+$('#swap').onclick = () => { const t = src.value; src.value = dst.value; dst.value = t; run(); };
+$('#swap2').onclick = () => { src.value = dst.value; run(); };
+$('#clear').onclick = () => { src.value = ''; dst.value = ''; $('#in-cnt').textContent = '0 字'; $('#out-cnt').textContent = '0 字'; };
+$('#demo').onclick = () => { src.value = DEMO; run(); };
+$('#copy').onclick = async () => {
+  if (!dst.value) return;
+  try { await navigator.clipboard.writeText(dst.value); $('#copy').textContent = '已复制 ✓'; }
+  catch (e) { dst.select(); document.execCommand('copy'); $('#copy').textContent = '已复制 ✓'; }
+  setTimeout(() => $('#copy').textContent = '复制结果', 1500);
+};
+$('#dl').onclick = () => {
+  if (!dst.value) return;
+  const blob = new Blob([dst.value], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `han_any_${mode}.txt`; a.click();
+  URL.revokeObjectURL(a.href);
+};
+src.value = DEMO; run();
+</script>
+</body>
+</html>
